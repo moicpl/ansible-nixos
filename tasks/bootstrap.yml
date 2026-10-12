@@ -89,6 +89,13 @@
       the live installer). Run the playbook from an interactive terminal.
     quiet: true
 
+# Without its header, the machine would be appended to whatever group ends the file
+- name: bootstrap.yml | Add the inventory group to the hosts file
+  ansible.builtin.lineinfile:
+    path: "{{ nixos_inventory_hosts_file }}"
+    line: "[{{ nixos_inventory_group }}]"
+  delegate_to: localhost
+
 - name: bootstrap.yml | Add the machine to the inventory hosts file
   ansible.builtin.lineinfile:
     path: "{{ nixos_inventory_hosts_file }}"
@@ -101,7 +108,7 @@
   ansible.builtin.copy:
     content: |
       ---
-      # NixOS machine installed by lab1playbooks/nixos.yml
+      # NixOS machine ({{ nixos_inventory_group }}) installed by lab1playbooks
 
       # Bitwarden secret IDs, recorded by the bitwarden role
       ...

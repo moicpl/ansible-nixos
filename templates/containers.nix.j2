@@ -35,9 +35,27 @@
 
   systemd.tmpfiles.rules = [
 {% for dir in nixos_container_dirs %}
-    "d {{ dir }} - - - -"
+{%   set dir = dir if dir is mapping else {'path': dir} %}
+    "d {{ dir.path }} {{ dir.mode | default('-') }} {{ dir.owner | default('-') }} {{ dir.group | default('-') }} -"
 {% endfor %}
   ];
+{% for network in nixos_container_networks %}
+{%   set users = nixos_containers | dict2items | selectattr('value.networks', 'defined')
+                 | selectattr('value.networks', 'contains', network) | map(attribute='key') | list %}
+
+  # Podman network {{ network }}: its containers reach each other by name
+  systemd.services."podman-network-{{ network }}" = {
+    path = [ config.virtualisation.podman.package ];
+    script = "podman network exists {{ network }} || podman network create {{ network }}";
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    wantedBy = [ "multi-user.target" ];
+    before = [ {% for name in users %}"podman-{{ name }}.service" {% endfor %}];
+    requiredBy = [ {% for name in users %}"podman-{{ name }}.service" {% endfor %}];
+  };
+{% endfor %}
 {% if nixos_container_autoupdate | bool %}
 
   # Pulls newer images daily and restarts the containers that use them

@@ -51,9 +51,14 @@ nixos_firewall_udp_ports: []
 # virtualisation.oci-containers.containers, written as is to containers.nix:
 # name -> options (image, ports, volumes, environment, extraOptions...)
 nixos_containers: {}
-# Host directories created for the containers (systemd.tmpfiles; created
-# root 0755, owner and mode left alone afterwards so containers can chown them)
+# Host directories created for the containers (systemd.tmpfiles): a path,
+# created root 0755 with owner and mode left alone afterwards so containers can
+# chown them, or {path, owner, group, mode} to set and keep those (names or
+# numeric IDs, mode as a quoted string)
 nixos_container_dirs: []
+# Podman networks created before the containers that list them in `networks`;
+# containers on the same network reach each other by container name
+nixos_container_networks: []
 # Daily podman auto-update for containers labelled io.containers.autoupdate=registry
 nixos_container_autoupdate: true
 

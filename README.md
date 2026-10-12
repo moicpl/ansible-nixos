@@ -42,7 +42,8 @@ role on that name:
 | `nixos_install_wipe` | Must be `true` for the install to run |
 | `nixos_packages` | Extra system packages, by nixpkgs attribute name (`python3` is always installed) |
 | `nixos_containers` | `virtualisation.oci-containers.containers`, as YAML |
-| `nixos_container_dirs` | Host directories created for the containers |
+| `nixos_container_dirs` | Host directories created for the containers: a path, or `{path, owner, group, mode}` |
+| `nixos_container_networks` | Podman networks created for the containers that list them in `networks`; they reach each other by name |
 | `nixos_firewall_tcp_ports`, `nixos_firewall_udp_ports` | Open ports |
 | `nixos_services` | Services listed at the end of the run (`name`, `scheme`, `port`, optional `path`), after SSH |
 
