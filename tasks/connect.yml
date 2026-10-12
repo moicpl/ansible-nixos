@@ -1,0 +1,48 @@
+---
+# Log in as nixos_admin_user with the SSH key when it works, else as root with
+# the password (live installer, or a system this role hasn't configured yet).
+# Raw commands only until a Python interpreter is known: NixOS has none by default.
+
+# Not a change to the host; needed in check mode too so the play can connect.
+- name: connect.yml | Write the SSH private key on the controller
+  ansible.builtin.copy:
+    content: "{{ nixos_ssh_private_key | trim }}\n"
+    dest: "{{ nixos_ssh_private_key_file }}"
+    mode: "0600"
+  delegate_to: localhost
+  run_once: true
+  check_mode: false
+  no_log: true
+
+- name: connect.yml | Use the SSH key for {{ nixos_admin_user }}
+  ansible.builtin.set_fact:
+    ansible_user: "{{ nixos_admin_user }}"
+    ansible_ssh_private_key_file: "{{ nixos_ssh_private_key_file }}"
+
+- name: connect.yml | Try the SSH key login
+  ansible.builtin.raw: "true"
+  register: nixos_key_login
+  ignore_unreachable: true
+  changed_when: false
+  check_mode: false
+
+- name: connect.yml | Fall back to the root password login
+  ansible.builtin.set_fact:
+    ansible_user: root
+    ansible_password: "{{ nixos_root_password }}"
+  when: nixos_key_login is unreachable
+  no_log: true
+
+- name: connect.yml | Check whether the host runs the live installer
+  ansible.builtin.raw: findmnt --noheadings --output FSTYPE /
+  register: nixos_root_fstype
+  changed_when: false
+  check_mode: false
+
+# The live installer keeps / in RAM
+- name: connect.yml | Record whether the host runs the live installer
+  ansible.builtin.set_fact:
+    nixos_live: "{{ nixos_root_fstype.stdout | trim == 'tmpfs' }}"
+
+- name: connect.yml | Find a Python interpreter
+  ansible.builtin.include_tasks: python.yml

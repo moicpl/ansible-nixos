@@ -1,0 +1,46 @@
+---
+- name: configure.yml | Configure NixOS
+  become: true
+  block:
+    # stateVersion stays the one the system was installed with
+    - name: configure.yml | Read the current configuration
+      ansible.builtin.slurp:
+        src: /etc/nixos/configuration.nix
+      register: nixos_current_config
+      when: nixos_state_version | length == 0
+
+    - name: configure.yml | Keep the installed state version
+      ansible.builtin.set_fact:
+        nixos_state_version: >-
+          {{ nixos_current_config.content | b64decode
+             | regex_search('system\.stateVersion\s*=\s*"([^"]+)"', '\1') | first }}
+      when: nixos_state_version | length == 0
+
+    - name: configure.yml | Write the NixOS configuration
+      ansible.builtin.include_tasks: files.yml
+      vars:
+        nixos_files_root: ""
+
+    # Starting new containers pulls their images, which can take a while
+    - name: configure.yml | Apply the configuration with nixos-rebuild
+      ansible.builtin.command:
+        argv:
+          - nixos-rebuild
+          - switch
+      async: 3600
+      poll: 15
+      changed_when: true
+      when: nixos_files_changed | bool or nixos_rebuild_force | bool
+
+    - name: configure.yml | Check that the containers are running
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - is-active
+          - "podman-{{ item }}.service"
+      loop: "{{ nixos_containers.keys() | list }}"
+      register: nixos_container_state
+      changed_when: false
+      until: nixos_container_state.rc == 0
+      retries: 60
+      delay: 10

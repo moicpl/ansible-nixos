@@ -1,0 +1,46 @@
+{#- Converts YAML data to a Nix value: strings are quoted, with ${ escaped so
+    Nix doesn't interpolate it; attribute names are quoted when needed. #}
+{%- macro nix(value, indent=0) -%}
+{%- if value is boolean -%}
+{{ value | lower }}
+{%- elif value is number -%}
+{{ value }}
+{%- elif value is string -%}
+{{ value | to_json(ensure_ascii=false) | replace('${', '\\${') }}
+{%- elif value is mapping -%}
+{
+{% for key in value | sort %}
+{{ '  ' * (indent + 1) }}{{ key if key is match('^[A-Za-z_][A-Za-z0-9_-]*$') else key | to_json }} = {{ nix(value[key], indent + 1) }};
+{% endfor %}
+{{ '  ' * indent }}}
+{%- else -%}
+[
+{% for element in value %}
+{{ '  ' * (indent + 1) }}{{ nix(element, indent + 1) }}
+{% endfor %}
+{{ '  ' * indent }}]
+{%- endif -%}
+{%- endmacro -%}
+{{ ansible_managed | comment }}
+{ config, lib, pkgs, ... }:
+
+{
+  virtualisation.podman = {
+    enable = true;
+    autoPrune.enable = true;
+  };
+
+  virtualisation.oci-containers.backend = "podman";
+  virtualisation.oci-containers.containers = {{ nix(nixos_containers, 1) }};
+
+  systemd.tmpfiles.rules = [
+{% for dir in nixos_container_dirs %}
+    "d {{ dir }} - - - -"
+{% endfor %}
+  ];
+{% if nixos_container_autoupdate | bool %}
+
+  # Pulls newer images daily and restarts the containers that use them
+  systemd.timers.podman-auto-update.wantedBy = [ "timers.target" ];
+{% endif %}
+}
