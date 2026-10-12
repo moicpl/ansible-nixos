@@ -1,16 +1,20 @@
 ---
 # Erases nixos_install_disk and installs NixOS on it from the live installer,
 # then reboots into the installed system. Runs only on the live installer.
+- name: install.yml | Find the install disk
+  ansible.builtin.include_tasks: disk.yml
+  when: nixos_install_disk | length == 0
+
 - name: install.yml | Check that the disk may be erased
   ansible.builtin.assert:
     that:
       - not ansible_check_mode
-      - nixos_install_disk | length > 0
       - nixos_install_wipe | bool
     fail_msg: >-
       {{ inventory_hostname }} runs the NixOS live installer. Installing erases
-      {{ nixos_install_disk | default('nixos_install_disk (not set)', true) }}:
-      set nixos_install_disk and rerun without --check, with -e nixos_install_wipe=true.
+      {{ nixos_install_disk }}{{ ' (' ~ nixos_install_disk_description ~ ')' if nixos_install_disk_description is defined }}.
+      If that is the right disk, rerun without --check, with -e nixos_install_wipe=true;
+      otherwise set nixos_install_disk in the host_vars.
     quiet: true
 
 - name: install.yml | Read the installer NixOS version
@@ -93,6 +97,8 @@
 
 # Only the installed system has the admin user and python3 at this path, so
 # the connection succeeds once it is up (not while the installer shuts down).
+# Same address: the installer and the installed system both use the MAC
+# address as DHCP client ID, and a new FQDN may not resolve yet.
 - name: install.yml | Log in to the installed system with the SSH key
   ansible.builtin.set_fact:
     ansible_user: "{{ nixos_admin_user }}"

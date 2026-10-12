@@ -1,6 +1,6 @@
 ---
 # Log in as nixos_admin_user with the SSH key when it works, else as root with
-# the password (live installer, or a system this role hasn't configured yet).
+# the bootstrap password (live installer). Installed systems accept keys only.
 # Raw commands only until a Python interpreter is known: NixOS has none by default.
 
 # Not a change to the host; needed in check mode too so the play can connect.
@@ -26,18 +26,30 @@
   changed_when: false
   check_mode: false
 
-- name: connect.yml | Fall back to the root password login
+- name: connect.yml | Fall back to the bootstrap root password login
   ansible.builtin.set_fact:
     ansible_user: root
-    ansible_password: "{{ nixos_root_password }}"
+    ansible_password: "{{ nixos_bootstrap_root_password }}"
   when: nixos_key_login is unreachable
   no_log: true
 
 - name: connect.yml | Check whether the host runs the live installer
   ansible.builtin.raw: findmnt --noheadings --output FSTYPE /
   register: nixos_root_fstype
+  ignore_unreachable: true
   changed_when: false
   check_mode: false
+
+# Usually a freshly booted live installer: its root has no password until someone sets one
+- name: connect.yml | Stop when no login works
+  ansible.builtin.fail:
+    msg: >-
+      Can't log in to {{ inventory_hostname }}, neither as {{ nixos_admin_user }} with
+      the SSH key nor as root with the bootstrap password. Don't forget to set the
+      patate password on the remote host: on the live installer's console, run
+      `passwd` and enter the nixos_bootstrap_root_password value from Bitwarden,
+      then rerun the playbook. (An installed machine accepts the SSH key only.)
+  when: nixos_root_fstype is unreachable
 
 # The live installer keeps / in RAM
 - name: connect.yml | Record whether the host runs the live installer

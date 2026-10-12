@@ -14,6 +14,9 @@
   # The host is reachable by name: DNS from DHCP, and mDNS ({{ nixos_hostname }}.local).
   networking.hostName = "{{ nixos_hostname }}";
   networking.useDHCP = true;
+  # MAC address as DHCP client ID, like the live installer (NetworkManager), so
+  # the install keeps the installer's lease and address
+  networking.dhcpcd.extraConfig = "clientid";
   services.avahi = {
     enable = true;
     nssmdns4 = true;
@@ -42,19 +45,22 @@
   };
   security.sudo.wheelNeedsPassword = false;
 
+  # SSH keys only, and no root login: root is for the console
   services.openssh = {
     enable = true;
     settings = {
-      PermitRootLogin = "{{ 'yes' if nixos_ssh_root_password_login | bool else 'prohibit-password' }}";
-      PasswordAuthentication = {{ nixos_ssh_root_password_login | bool | lower }};
+      PermitRootLogin = "no";
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
     };
   };
 
   # python3 for Ansible
   environment.systemPackages = with pkgs; [
     python3
-    vim
-    htop
+{% for package in nixos_packages %}
+    {{ package }}
+{% endfor %}
   ];
 
   zramSwap.enable = true;

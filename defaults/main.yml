@@ -5,22 +5,31 @@ nixos_ssh_public_key: ""
 # Matching private key; written to nixos_ssh_private_key_file on the controller
 # so Ansible can log in as nixos_admin_user
 nixos_ssh_private_key: ""
-# Root password, set on the installed system and used to log in as root when
-# the key login doesn't work yet (live installer, fresh install)
+# Root password of the live installer: the role logs in as root with it when
+# the key login doesn't work (before the install)
+nixos_bootstrap_root_password: ""
+# Root password of the installed system, for the console only: SSH accepts
+# keys only and no root login
 nixos_root_password: ""
 # Extra root-only files, e.g. container environment files holding passwords:
 # name -> content, written to /etc/nixos/secrets/<name> (mode 0600)
 nixos_secret_files: {}
 
+# tasks/bootstrap.yml: where the hostname given for a machine on the live
+# installer is added
+nixos_inventory_dir: "{{ playbook_dir }}/inventory"
+nixos_inventory_hosts_file: "{{ nixos_inventory_dir }}/hosts/nixos"
+nixos_inventory_group: nixos
+
 # Controller file for the private key (gitignored in lab1playbooks)
 nixos_ssh_private_key_file: "{{ playbook_dir }}/.ansible_ssh_key"
 # Admin user: SSH key login, passwordless sudo
 nixos_admin_user: lab1
-# Keep root SSH login with the password
-nixos_ssh_root_password_login: true
 
 # Install NixOS when the host runs the live installer. The disk is erased, so
-# the run stops unless nixos_install_wipe is true (pass it with -e).
+# the run stops unless nixos_install_wipe is true (pass it with -e); that run
+# shows the disk. Empty: the only internal disk (tasks/disk.yml); set a
+# /dev/disk/by-id path when the machine has several.
 nixos_install_disk: ""
 nixos_install_wipe: false
 # Boot partition size; the rest of the disk is the root file system
@@ -28,6 +37,10 @@ nixos_install_boot_size: 1GiB
 
 nixos_hostname: "{{ inventory_hostname_short }}"
 nixos_timezone: UTC
+
+# Extra system packages, by nixpkgs attribute name (search.nixos.org/packages).
+# python3 is always installed, for Ansible.
+nixos_packages: []
 # Set at install from the installer version (e.g. 26.05); never change it
 # afterwards (https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion)
 nixos_state_version: ""
@@ -43,6 +56,10 @@ nixos_containers: {}
 nixos_container_dirs: []
 # Daily podman auto-update for containers labelled io.containers.autoupdate=registry
 nixos_container_autoupdate: true
+
+# Listed at the end of the run, after SSH, as <scheme>://<host>:<port><path>:
+# name, scheme, port, optional path
+nixos_services: []
 
 # Run nixos-rebuild switch even if no file changed (e.g. after a failed rebuild)
 nixos_rebuild_force: false
