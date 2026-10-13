@@ -2,21 +2,18 @@
 { config, lib, pkgs, ... }:
 
 {
+  # apps.nix: the apps (containers, their ports), written by the apps playbooks
   imports = [
     ./hardware-configuration.nix
-    ./containers.nix
-  ];
+    ./network.nix
+  ] ++ lib.optional (builtins.pathExists ./apps.nix) ./apps.nix;
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  # DHCP on every interface; nothing depends on the address, which can change.
-  # The host is reachable by name: DNS from DHCP, and mDNS ({{ nixos_hostname }}.local).
+  # Addresses in network.nix. The host is reachable by name: DNS, and mDNS
+  # ({{ nixos_hostname }}.local).
   networking.hostName = "{{ nixos_hostname }}";
-  networking.useDHCP = true;
-  # MAC address as DHCP client ID, like the live installer (NetworkManager), so
-  # the install keeps the installer's lease and address
-  networking.dhcpcd.extraConfig = "clientid";
   services.avahi = {
     enable = true;
     nssmdns4 = true;
@@ -27,11 +24,8 @@
     };
   };
 
-  networking.firewall = {
-    enable = true;
-    allowedTCPPorts = [ {{ nixos_firewall_tcp_ports | map('string') | join(' ') }} ];
-    allowedUDPPorts = [ {{ nixos_firewall_udp_ports | map('string') | join(' ') }} ];
-  };
+  # SSH only; apps.nix opens its own ports
+  networking.firewall.enable = true;
 
   time.timeZone = "{{ nixos_timezone }}";
 

@@ -1,6 +1,6 @@
 ---
-# Writes the NixOS configuration under nixos_files_root: /mnt at install time,
-# / afterwards. Sets nixos_files_changed.
+# Writes the base NixOS configuration under nixos_files_root: /mnt at install
+# time, / afterwards. Sets nixos_files_changed.
 - name: files.yml | Create the secrets directory
   ansible.builtin.file:
     path: "{{ nixos_files_root }}/etc/nixos/secrets"
@@ -19,7 +19,7 @@
     validate: nix-instantiate --parse %s
   loop:
     - configuration.nix
-    - containers.nix
+    - network.nix
   register: nixos_files_config
 
 # Fixed salt so the hash, and the file, only change with the password
@@ -33,22 +33,6 @@
   register: nixos_files_root_hash
   no_log: true
 
-- name: files.yml | Write the secret files
-  ansible.builtin.copy:
-    content: "{{ item.value }}"
-    dest: "{{ nixos_files_root }}/etc/nixos/secrets/{{ item.key }}"
-    owner: root
-    group: root
-    mode: "0600"
-  loop: "{{ nixos_secret_files | dict2items }}"
-  loop_control:
-    label: "{{ item.key }}"
-  register: nixos_files_secrets
-  no_log: true
-
 - name: files.yml | Record whether the configuration changed
   ansible.builtin.set_fact:
-    nixos_files_changed: >-
-      {{ nixos_files_config is changed
-         or nixos_files_root_hash is changed
-         or nixos_files_secrets is changed }}
+    nixos_files_changed: "{{ nixos_files_config is changed or nixos_files_root_hash is changed }}"

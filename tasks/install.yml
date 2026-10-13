@@ -97,10 +97,11 @@
 
 # Only the installed system has the admin user and python3 at this path, so
 # the connection succeeds once it is up (not while the installer shuts down).
-# Same address: the installer and the installed system both use the MAC
-# address as DHCP client ID, and a new FQDN may not resolve yet.
+# At its fixed address, or with DHCP at the installer's address: both use the
+# MAC address as DHCP client ID, and a new FQDN may not resolve yet.
 - name: install.yml | Log in to the installed system with the SSH key
   ansible.builtin.set_fact:
+    ansible_host: "{{ nixos_ip_host if nixos_ip_fixed | bool else ansible_host | default(inventory_hostname) }}"
     ansible_user: "{{ nixos_admin_user }}"
     ansible_password: ""
     ansible_python_interpreter: /run/current-system/sw/bin/python3

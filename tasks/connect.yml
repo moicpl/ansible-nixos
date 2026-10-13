@@ -1,6 +1,7 @@
 ---
 # Log in as nixos_admin_user with the SSH key when it works, else as root with
-# the bootstrap password (live installer). Installed systems accept keys only.
+# nixos_bootstrap_root_password when it is set (live installer, during
+# bootstrap.yml's run). Installed systems accept keys only.
 # Raw commands only until a Python interpreter is known: NixOS has none by default.
 
 # Not a change to the host; needed in check mode too so the play can connect.
@@ -26,7 +27,17 @@
   changed_when: false
   check_mode: false
 
-- name: connect.yml | Fall back to the bootstrap root password login
+- name: connect.yml | Stop when the SSH key login doesn't work
+  ansible.builtin.fail:
+    msg: >-
+      Can't log in to {{ inventory_hostname }} as {{ nixos_admin_user }} with the SSH
+      key. A new machine is installed from the NixOS USB stick, through its
+      placeholder name, by bootstrap_nix.yml -e nixos_install_wipe=true.
+  when:
+    - nixos_key_login is unreachable
+    - nixos_bootstrap_root_password | length == 0
+
+- name: connect.yml | Fall back to the live installer's root password login
   ansible.builtin.set_fact:
     ansible_user: root
     ansible_password: "{{ nixos_bootstrap_root_password }}"
@@ -40,15 +51,11 @@
   changed_when: false
   check_mode: false
 
-# Usually a freshly booted live installer: its root has no password until someone sets one
 - name: connect.yml | Stop when no login works
   ansible.builtin.fail:
     msg: >-
       Can't log in to {{ inventory_hostname }}, neither as {{ nixos_admin_user }} with
-      the SSH key nor as root with the bootstrap password. Don't forget to set the
-      patate password on the remote host: on the live installer's console, run
-      `passwd` and enter the nixos_bootstrap_root_password value from Bitwarden,
-      then rerun the playbook. (An installed machine accepts the SSH key only.)
+      the SSH key nor as root with the live installer's password.
   when: nixos_root_fstype is unreachable
 
 # The live installer keeps / in RAM

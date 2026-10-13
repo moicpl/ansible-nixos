@@ -30,6 +30,11 @@
     autoPrune.enable = true;
   };
 
+  networking.firewall = {
+    allowedTCPPorts = [ {{ nixos_firewall_tcp_ports | map('string') | join(' ') }} ];
+    allowedUDPPorts = [ {{ nixos_firewall_udp_ports | map('string') | join(' ') }} ];
+  };
+
   virtualisation.oci-containers.backend = "podman";
   virtualisation.oci-containers.containers = {{ nix(nixos_containers, 1) }};
 
