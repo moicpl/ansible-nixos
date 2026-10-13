@@ -9,7 +9,7 @@ two layers:
   packages. Written to `/etc/nixos/configuration.nix` and `/etc/nixos/network.nix`.
 - **Apps** (`tasks/apps.yml`, run with `tasks_from: apps.yml`): podman
   containers through `virtualisation.oci-containers`, their firewall ports and
-  host directories, written to `/etc/nixos/apps.nix`, and their root-only
+  host directories and config files, written to `/etc/nixos/apps.nix`, and their root-only
   secret files in `/etc/nixos/secrets/`.
 
 `configuration.nix` imports `apps.nix` when it exists, so either layer rebuilds
@@ -59,6 +59,7 @@ base configuration, then writes and applies the apps.
 | `nixos_secret_files` | `name: content` files written to `/etc/nixos/secrets/<name>`, mode 0600, e.g. container `environmentFiles` (apps, secret input) |
 | `nixos_containers` | `virtualisation.oci-containers.containers`, as YAML (apps) |
 | `nixos_container_dirs` | Host directories created for the containers: a path, or `{path, owner, group, mode}` (apps) |
+| `nixos_container_files` | `name: content` config files (not secrets) written to `/etc/apps/<name>`; a container mounts each file it uses in its `volumes` and is restarted when one changes (apps) |
 | `nixos_container_networks` | Podman networks created for the containers that list them in `networks`; they reach each other by name (apps) |
 | `nixos_firewall_tcp_ports`, `nixos_firewall_udp_ports` | Ports opened for the apps |
 | `nixos_services` | Services listed at the end of the run (`name`, `scheme`, `port`, optional `path`), after SSH |

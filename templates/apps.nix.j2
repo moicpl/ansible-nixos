@@ -44,6 +44,23 @@
     "d {{ dir.path }} {{ dir.mode | default('-') }} {{ dir.owner | default('-') }} {{ dir.group | default('-') }} -"
 {% endfor %}
   ];
+{% for name in nixos_container_files | sort %}
+{%   if loop.first %}
+
+  # Config files of the containers (no secrets: world-readable). They are links
+  # into the Nix store, so containers mount them one by one, not their directory.
+{%   endif %}
+  environment.etc.{{ ('apps/' ~ name) | to_json }}.text = {{ nix(nixos_container_files[name], 1) }};
+{% endfor %}
+{% for container in nixos_containers | sort %}
+{%   set mounts = nixos_containers[container].volumes | default([]) | map('regex_replace', ':.*', '') | list %}
+{%   set files = nixos_container_files | sort | select('in', mounts | map('regex_replace', '^/etc/apps/', '') | list) | list %}
+{%   if files %}
+
+  # Restarts {{ container }} when a config file it mounts changes
+  systemd.services."podman-{{ container }}".restartTriggers = [ {% for name in files %}config.environment.etc.{{ ('apps/' ~ name) | to_json }}.source {% endfor %}];
+{%   endif %}
+{% endfor %}
 {% for network in nixos_container_networks %}
 {%   set users = nixos_containers | dict2items | selectattr('value.networks', 'defined')
                  | selectattr('value.networks', 'contains', network) | map(attribute='key') | list %}

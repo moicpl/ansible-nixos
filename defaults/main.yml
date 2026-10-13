@@ -69,6 +69,11 @@ nixos_containers: {}
 # chown them, or {path, owner, group, mode} to set and keep those (names or
 # numeric IDs, mode as a quoted string)
 nixos_container_dirs: []
+# Config files for the containers, not secrets (world-readable): name -> content,
+# written by NixOS to /etc/apps/<name> (e.g. portal/Caddyfile). Mount each file
+# in `volumes` (/etc/apps/<name>:<path in the container>), not its directory: a
+# container is restarted when a file it mounts changes.
+nixos_container_files: {}
 # Podman networks created before the containers that list them in `networks`;
 # containers on the same network reach each other by container name
 nixos_container_networks: []
